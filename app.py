@@ -12,15 +12,17 @@ if not TOKEN:
 
 app = Flask(__name__)
 
-# ---------- ساخت و مقداردهی اولیه ربات ----------
+# ---------- ساخت ربات ----------
 bot_app = Application.builder().token(TOKEN).build()
 
-# مقداردهی اولیه (این خط قبلاً نبود و باعث خطا می‌شد)
-bot_app.initialize()
+# مقداردهی اولیه به صورت صحیح و هماهنگ (async)
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
+loop.run_until_complete(bot_app.initialize())
 
 # ---------- توابع ربات ----------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("سلام! من با موفقیت فعال شدم.")
+    await update.message.reply_text("سلام! من با موفقیت فعال شدم و آماده پاسخگویی هستم.")
 
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"شما گفتید: {update.message.text}")
@@ -36,7 +38,7 @@ def webhook():
         json_data = request.get_json(force=True)
         update = Update.de_json(json_data, bot_app.bot)
         
-        # پردازش پیام با حلقه asyncio جدید
+        # پردازش پیام در همان حلقه asyncio
         asyncio.run(bot_app.process_update(update))
         
         return "OK", 200
