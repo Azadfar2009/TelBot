@@ -28,7 +28,7 @@ async def startup_event():
     # تست اتصال به Gemini
     try:
         genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel("gemini-2.0-flash")
+        model = genai.GenerativeModel("gemini-1.5-flash")
         response = model.generate_content("سلام")
         logging.info(f"✅ اتصال به Gemini موفقیت‌آمیز بود: {response.text[:50]}")
     except Exception as e:
