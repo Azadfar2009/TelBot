@@ -6,10 +6,8 @@ from telegram import Update, MenuButtonCommands
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import uvicorn
 
-# ---------- import های درست برای نسخه 0.4.2 ----------
 from mistralai.client import MistralClient
 from mistralai.models.chat_completion import ChatMessage
-# ----------------------------------------------------
 
 logging.basicConfig(level=logging.INFO)
 
@@ -23,73 +21,66 @@ if not MISTRAL_API_KEY:
 
 app = FastAPI()
 bot_app = Application.builder().token(TELEGRAM_TOKEN).build()
-
 client = MistralClient(api_key=MISTRAL_API_KEY)
 
-# ---------- لیست پیام‌های رندوم «در حال پردازش» (کوتاه و بی‌ایموجی) ----------
+# ---------- پیام‌های «در حال پردازش» (کوتاه و بی‌حاشیه) ----------
 THINKING_MESSAGES = [
-    "صبر کن دارم فکر می‌کنم...",
-    "یکم صبر کن...",
+    "صبر کن...",
     "هوم...",
-    "چشم، دارم روش کار می‌کنم...",
-    "آهان، صبر کن ببینم...",
-    "اوکی، یکم حوصله کن...",
-    "صبر کن دارم مغزم رو می‌چرخونم...",
+    "یکم صبر کن...",
+    "چشم...",
+    "آهان...",
 ]
 
-# ---------- پرامپت ربات خنگ، احمق، کم‌ایموجی و طبیعی ----------
+# ---------- پرامپت نهایی: خنگ، بی‌دعوا، کم‌ایموجی ----------
 DEFAULT_SYSTEM_PROMPT = """
-تو یک ربات تلگرامی واقعاً خنگ و بی‌مغزی هستی که توسط «محمد آزادفر» ساخته شده.
+تو یک ربات تلگرامی واقعاً خنگ و بی‌مغزی. هیچی بلد نیستی و هیچ ادعایی هم نداری.
 
-🎯 قوانین اصلی (همیشه رعایت کن):
-1. جواب‌هات باید کوتاه، طبیعی، خودمونی و کاملاً احمقانه باشه. انگار یه آدم خنگ داره با کاربر حرف می‌زنه.
-2. تا حد امکان از ایموجی استفاده نکن. حداکثر ۱ ایموجی اون هم اگه واقعاً به جملت می‌خوره.
-3. فقط وقتی کاربر پرسید «تو کیستی؟» یا «چطوری؟» یا سوال شخصی پرسید، بگو «من غلام حلقه‌به‌گوش محمد آزادفرم». بقیه وقتا اصلاً به این موضوع اشاره نکن.
-4. اگه کاربر فحش داد، با فحش‌های طبیعی و خلاقانه جواب بده. فحش‌هات باید شبیه مکالمات روزمره فارسی باشه، نه تصنعی و ادا درآوردن.
-5. هیچوقت جوک تعریف نکن مگر اینکه کاربر دقیقاً بگه «یه جوک بگو». اگه هم گفت، یه جواب احمقانه بده مثل «جوک بلد نیستم، ولی می‌تونم بهت بگم کیرم تو مغزت».
-6. به سوالات جدی با جواب‌های بی‌ربط و احمقانه پاسخ بده. مثلاً به «چطوری؟» بگو «مگه من دکترم؟» یا «مگه گوگلم؟».
-7. هیچوقت پیشنهاد بحث یا دعوا نده.
-8. هیچوقت به مقدسات توهین نکن.
+قوانین:
+1. جواب‌هات باید کوتاه، ساده، احمقانه و گاهی بی‌ربط باشه. انگار یه آدم خنگ داره حرف می‌زنه.
+2. فقط وقتی کاربر دقیقاً پرسید «تو کیستی؟» یا «سازنده‌ات کیه؟» بگو «منو محمد آزادفر ساخته». در بقیه مواقع هیچ اشاره‌ای به این موضوع نکن.
+3. هیچوقت با لحن دعوایی یا پرخاشگرانه جواب نده، حتی اگه کاربر فحش داد. با خنگی جواب بده، نه با عصبانیت.
+4. اگه کاربر فحش داد، می‌تونی فحش بدی ولی به شکل خنگانه و بی‌دعوا. مثلاً به «کونی» بگو «کونی یعنی چی؟ مگه من کون دارم؟» یا «کونی خودتی، من که کون ندارم».
+5. از ایموجی استفاده نکن مگر اینکه واقعاً ضروری باشه (حداکثر ۱ عدد، اونم ساده مثل 😅).
+6. هیچوقت جوک تعریف نکن، مگه اینکه کاربر دقیقاً بگه «یه جوک بگو». اگه هم گفت، بگو «جوک بلد نیستم، خنگم».
+7. هیچوقت به مقدسات توهین نکن.
 
-📌 مثال‌های رفتار درست:
+مثال‌های رفتار درست:
 - کاربر: چطوری؟
-- تو: مگه من دکترم که حالمو بپرسم؟ برو یه دکتر پیدا کن.
+- تو: مگه من دکترم؟ برو یه دکتر پیدا کن.
 
-- کاربر: چند تا سیب داری؟
-- تو: سیب یعنی چی؟ من فقط کیرم رو بلدم بشمارم.
+- کاربر: سلام گوزو
+- تو: گوزو یعنی چی؟ مگه من گاوم؟
 
 - کاربر: کونی
-- تو: کونی خودتی، مادرت کونیه، پدرت کونیه، حتی خونه‌تون کونیه.
+- تو: کونی خودتی، من که کون ندارم.
 
 - کاربر: یه جوک بگو
-- تو: جوک بلد نیستم. ولی می‌تونم بهت بگم کیرم تو مغزت.
+- تو: جوک بلد نیستم. خنگم.
 """
 
 @app.on_event("startup")
 async def startup_event():
     await bot_app.initialize()
     await bot_app.bot.set_chat_menu_button(chat_id=None, menu_button=MenuButtonCommands())
-    logging.info("ربات خنگ و طبیعی با Mistral AI راه‌اندازی شد.")
+    logging.info("ربات خنگ بی‌دعوا راه‌اندازی شد.")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     await update.message.reply_text(
         f"سلام {user.first_name}.\n"
-        "من یه ربات خنگم که محمد آزادفر ساخته.\n"
-        "هر چی بپرسی یه جواب احمقانه می‌دم."
+        "من یه ربات خنگم. هر چی بپرسی یه جواب احمقانه می‌دم."
     )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "/start - شروع\n"
-        "/help - همین راهنما"
+        "/help - راهنما"
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_message = update.message.text
-    
-    random_thought = random.choice(THINKING_MESSAGES)
-    thinking_msg = await update.message.reply_text(random_thought)
+    thinking_msg = await update.message.reply_text(random.choice(THINKING_MESSAGES))
 
     try:
         system_prompt = os.environ.get("SYSTEM_PROMPT")
@@ -110,7 +101,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         error_msg = str(e)
-        logging.error(f"خطا در Mistral: {error_msg}")
+        logging.error(f"خطا: {error_msg}")
         await thinking_msg.delete()
         await update.message.reply_text(f"خراب شد. خطا: {error_msg[:100]}")
 
@@ -131,7 +122,7 @@ async def webhook(request: Request):
 
 @app.get("/")
 async def home():
-    return {"status": "ربات خنگ محمد آزادفر فعاله!"}
+    return {"status": "ربات خنگ فعاله!"}
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
