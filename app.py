@@ -4,7 +4,10 @@ from fastapi import FastAPI, Request, Response
 from telegram import Update, MenuButtonCommands
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import uvicorn
-from mistralai import Mistral
+
+# روش صحیح import برای mistralai
+from mistralai.client import MistralClient
+from mistralai.models import UserMessage
 
 # ---------- تنظیمات اولیه ----------
 logging.basicConfig(level=logging.INFO)
@@ -22,7 +25,7 @@ app = FastAPI()
 bot_app = Application.builder().token(TELEGRAM_TOKEN).build()
 
 # ---------- راه‌اندازی Mistral AI ----------
-client = Mistral(api_key=MISTRAL_API_KEY)
+client = MistralClient(api_key=MISTRAL_API_KEY)
 
 # ---------- تنظیم منو در زمان شروع ----------
 @app.on_event("startup")
@@ -55,14 +58,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     thinking_msg = await update.message.reply_text("🤔 در حال فکر کردن ...")
 
     try:
-        chat_response = client.chat.complete(
-            model="mistral-small-latest",  # یا mistral-medium-latest برای کیفیت بالاتر
-            messages=[
-                {
-                    "role": "user",
-                    "content": user_message,
-                },
-            ]
+        chat_response = client.chat(
+            model="mistral-small-latest",
+            messages=[UserMessage(content=user_message)]
         )
         ai_response = chat_response.choices[0].message.content
 
