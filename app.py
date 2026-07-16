@@ -5,9 +5,10 @@ from telegram import Update, MenuButtonCommands
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import uvicorn
 
-# روش صحیح import برای mistralai
+# ---------- روش جدید import برای mistralai نسخه 1.x ----------
 from mistralai.client import MistralClient
 from mistralai.models import UserMessage
+# -------------------------------------------------------------
 
 # ---------- تنظیمات اولیه ----------
 logging.basicConfig(level=logging.INFO)
@@ -24,7 +25,7 @@ if not MISTRAL_API_KEY:
 app = FastAPI()
 bot_app = Application.builder().token(TELEGRAM_TOKEN).build()
 
-# ---------- راه‌اندازی Mistral AI ----------
+# ---------- راه‌اندازی کلاینت Mistral (روش جدید) ----------
 client = MistralClient(api_key=MISTRAL_API_KEY)
 
 # ---------- تنظیم منو در زمان شروع ----------
@@ -32,7 +33,7 @@ client = MistralClient(api_key=MISTRAL_API_KEY)
 async def startup_event():
     await bot_app.initialize()
     await bot_app.bot.set_chat_menu_button(chat_id=None, menu_button=MenuButtonCommands())
-    logging.info("ربات با Mistral AI راه‌اندازی شد.")
+    logging.info("ربات با Mistral AI (نسخه جدید) راه‌اندازی شد.")
 
 # ---------- دستور start ----------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -52,12 +53,13 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "هر سوال دیگری را مستقیم بپرسید."
     )
 
-# ---------- پاسخگویی با Mistral AI ----------
+# ---------- پاسخگویی با Mistral AI (روش جدید) ----------
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_message = update.message.text
     thinking_msg = await update.message.reply_text("🤔 در حال فکر کردن ...")
 
     try:
+        # روش جدید ارسال درخواست به Mistral
         chat_response = client.chat(
             model="mistral-small-latest",
             messages=[UserMessage(content=user_message)]
