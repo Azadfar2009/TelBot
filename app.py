@@ -6,7 +6,6 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 import uvicorn
 import google.generativeai as genai
 
-# ---------- تنظیمات اولیه ----------
 logging.basicConfig(level=logging.INFO)
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
@@ -17,63 +16,48 @@ if not TELEGRAM_TOKEN:
 if not GEMINI_API_KEY:
     raise ValueError("GEMINI_API_KEY تنظیم نشده!")
 
-# ---------- راه‌اندازی FastAPI و ربات ----------
 app = FastAPI()
 bot_app = Application.builder().token(TELEGRAM_TOKEN).build()
 
-# ---------- راه‌اندازی Gemini ----------
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-2.0-flash")  # مدل رایگان و سریع
-
-# ---------- تنظیم منو در زمان شروع ----------
+# ---------- تست اتصال به Gemini در زمان راه‌اندازی ----------
 @app.on_event("startup")
 async def startup_event():
     await bot_app.initialize()
-    # این خط باعث می‌شود دکمه‌ی منو در تلگرام ظاهر شود
     await bot_app.bot.set_chat_menu_button(chat_id=None, menu_button=MenuButtonCommands())
-    logging.info("ربات با منو و Gemini راه‌اندازی شد.")
+    
+    # تست اتصال به Gemini
+    try:
+        genai.configure(api_key=GEMINI_API_KEY)
+        model = genai.GenerativeModel("gemini-2.0-flash")
+        response = model.generate_content("سلام")
+        logging.info(f"✅ اتصال به Gemini موفقیت‌آمیز بود: {response.text[:50]}")
+    except Exception as e:
+        logging.error(f"❌ خطا در اتصال به Gemini: {e}")
+    
+    logging.info("ربات با موفقیت راه‌اندازی شد.")
 
-# ---------- دستور start ----------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    await update.message.reply_text(
-        f"سلام {user.first_name}! 👋\n"
-        "من یک ربات هوشمند هستم که با Gemini کار می‌کند.\n"
-        "هر سوالی داری، بپرس!"
-    )
+    await update.message.reply_text(f"سلام {user.first_name}! من یک ربات هوشمند هستم.")
 
-# ---------- دستور help ----------
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "🤖 **راهنما**\n"
-        "/start - شروع مجدد\n"
-        "/help - نمایش این پیام\n"
-        "هر سوال دیگری را مستقیم بپرسید."
-    )
-
-# ---------- پاسخگویی با Gemini ----------
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_message = update.message.text
-    thinking_msg = await update.message.reply_text("🤔 در حال فکر کردن ...")
-
     try:
+        # راه‌اندازی مجدد Gemini در هر درخواست (برای تست)
+        genai.configure(api_key=GEMINI_API_KEY)
+        model = genai.GenerativeModel("gemini-2.0-flash")
         response = model.generate_content(user_message)
         ai_response = response.text
-
-        await thinking_msg.delete()
         await update.message.reply_text(ai_response)
-
     except Exception as e:
-        logging.error(f"خطا در Gemini: {e}")
-        await thinking_msg.delete()
-        await update.message.reply_text("❌ خطایی رخ داد. لطفاً دوباره تلاش کن.")
+        error_msg = str(e)
+        logging.error(f"❌ خطا: {error_msg}")
+        # ارسال خطا به کاربر (برای تشخیص)
+        await update.message.reply_text(f"❌ خطا: {error_msg[:200]}")
 
-# ---------- ثبت دستورات ----------
 bot_app.add_handler(CommandHandler("start", start))
-bot_app.add_handler(CommandHandler("help", help_command))
 bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-# ---------- Webhook (همان کد قبلی) ----------
 @app.post("/webhook")
 async def webhook(request: Request):
     try:
@@ -87,7 +71,7 @@ async def webhook(request: Request):
 
 @app.get("/")
 async def home():
-    return {"status": "ربات هوشمند Gemini فعال است!"}
+    return {"status": "ربات فعال است!"}
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
