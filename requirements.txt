@@ -1,5 +1,4 @@
 fastapi
 uvicorn[standard]
 python-telegram-bot>=20.8
-mistralai
-pytz
+mistralai>=1.0.0
