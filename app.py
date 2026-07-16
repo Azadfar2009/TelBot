@@ -5,10 +5,10 @@ from telegram import Update, MenuButtonCommands
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import uvicorn
 
-# ---------- import برای نسخه 0.4.2 ----------
+# ---------- import های درست برای نسخه 0.4.2 ----------
 from mistralai.client import MistralClient
-from mistralai.models import UserMessage
-# -----------------------------------------
+from mistralai.models.chat_completion import ChatMessage
+# ----------------------------------------------------
 
 logging.basicConfig(level=logging.INFO)
 
@@ -47,10 +47,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     thinking_msg = await update.message.reply_text("🤔 در حال فکر کردن ...")
 
     try:
+        # ---------- روش درست فراخوانی برای نسخه 0.4.2 ----------
         chat_response = client.chat(
             model="mistral-small-latest",
-            messages=[UserMessage(content=user_message)]
+            messages=[ChatMessage(role="user", content=user_message)]
         )
+        # -------------------------------------------------------
         ai_response = chat_response.choices[0].message.content
 
         await thinking_msg.delete()
